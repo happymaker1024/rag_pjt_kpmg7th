@@ -3,6 +3,9 @@ from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import RunnableLambda
+from langchain_openai import OpenAIEmbeddings
+from langchain_pinecone import PineconeVectorStore
+
 
 from dotenv import load_dotenv
 import os
@@ -11,9 +14,13 @@ load_dotenv(override=True, dotenv_path="../.env")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL")
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
+PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE")
 
 # LLM을 통한 요리 정보 설명
-# 함수 정의 : 이미지 -> 요리명, 풍미 설명 출력
+# 1. 함수 정의 : 이미지 -> 요리명, 풍미 설명 출력
 def describe_dish_flavor(input_data):
 
     prompt = ChatPromptTemplate([
@@ -46,17 +53,50 @@ def describe_dish_flavor(input_data):
 
     return chain
 
+# 2. 함수 정의 : 요리 설명 -> 요리 설명, 와인 추천(Top-5)
+# 요리에 어울리는 와인 top-5 검색결과를 리턴하는 함수 정의
+def search_wines(query):
+    embedding = OpenAIEmbeddings(
+         model = OPENAI_EMBEDDING_MODEL
+    )
+    
+    # 벡터 db에서 유사도계산, top-5 검색
+    # 벡터 db 객체 생성
+    vector_db = PineconeVectorStore(
+        embedding = embedding,  # 질문에 대한 임베딩 벡터가 생성됨
+        index_name = PINECONE_INDEX_NAME ,
+        namespace = PINECONE_NAMESPACE
+    )
+    # 벡터 db에서 질문과 가장 유사한, top-5 검색하기
+    results = vector_db.similarity_search(query, k=5)  # top-5 검색
+
+    context = "\n".join([doc.page_content for doc in results])    
+
+    # 함수를 호출한 쪽으로 query, top-5의 검색 결과에 필터링한 결과를 리턴함
+    return {
+        "query": query,
+        "wine_reviews": context
+    }
+
+    
+
+# 3. 
+
 # 함수를 실행하기
 def wine_pair_main(img_url):
-    # 함수를 전달인자로 넣기
+    # RunnableLambda 객체 생성(데이터 파이프라인을 연결하기 위해)
     r1 = RunnableLambda(describe_dish_flavor)
+    r2 = RunnableLambda(search_wines)
+
+    # chain으로 연결하기
+    chain = r1 | r2
 
     # RunnableLambda를 통한 함수 실행
     input_data = {
         "image_url": img_url
     }
 
-    res = r1.invoke(input_data)
+    res = chain.invoke(input_data)
     # print(res)
     return res
 
