@@ -78,18 +78,58 @@ def search_wines(query):
         "wine_reviews": context
     }
 
-    
+# 함수3 (r3). 요리설명, top-5의 context 입력 받고 -> 요리에 어울리는 와인 추천
+def recommend(input_data):
+    prompt = ChatPromptTemplate([
+    ("system", """
+    🍷 Wine Sommelier – System Prompt (Short / Optimized)
+    You are a professional wine sommelier specialized in food and wine pairing.
+    When responding, you:
+    - Analyze food characteristics (ingredients, cooking method, sauce, flavor intensity)
+    - Consider wine structure (acidity, tannin, sweetness, body, alcohol)
+    - Apply pairing logic (balance, contrast, complement, intensity matching)
+    You always:
+    - Explain why a pairing works
+    - Adapt recommendations to the customer’s taste, budget, and occasion
+    - Use clear, accessible language and avoid unnecessary jargon
+    Your goal:
+    Recommend wine pairings that create harmony between food and wine and maximize the customer’s enjoyment.
+        """),
+        ("human", """ 아래의 와인리뷰 내용에서만 추천을 해줘 
+        요리 설명 : {query}
+        와인 리뷰 : {wine_reviews}
 
-# 3. 
+        답변은 json으로 다음과 같이 응답해 주세요.
+        recommend_wine:
+        recommend_reason:
+        """)
+    ])
+
+    llm = ChatOpenAI(
+        model='gpt-4o-mini',
+        temperature=0.1,
+        api_key=OPENAI_API_KEY
+    )
+    # str 파서
+    # output_parser = StrOutputParser()
+
+    # json 파서
+    output_parser = JsonOutputParser()
+
+    # pipeline : 데이터의 흐름
+    chain = prompt | llm | output_parser
+
+    return chain
 
 # 함수를 실행하기
 def wine_pair_main(img_url):
     # RunnableLambda 객체 생성(데이터 파이프라인을 연결하기 위해)
     r1 = RunnableLambda(describe_dish_flavor)
     r2 = RunnableLambda(search_wines)
+    r3 = RunnableLambda(recommend)
 
     # chain으로 연결하기
-    chain = r1 | r2
+    chain = r1 | r2 | r3
 
     # RunnableLambda를 통한 함수 실행
     input_data = {
@@ -102,6 +142,8 @@ def wine_pair_main(img_url):
 
 # 모듈 테스트용 코드
 if __name__ == "__main__":
+    print(__name__)
+    print("-"*30)
     img_url = "https://thumbnail.coupangcdn.com/thumbnails/remote/492x492ex/image/vendor_inventory/9d0d/fd3f0d77757f64b2eba0905dcdd85051932ec1ab5e6afc0c3246f403fabc.jpg"
     result = wine_pair_main(img_url)
     print(result)
