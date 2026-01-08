@@ -1,12 +1,31 @@
 from fastapi import FastAPI
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+
 from wine_pairing import wine_pair_main
 # FastAPI() 객체 생성
 app = FastAPI()
 
+# templates 설정
+templates = Jinja2Templates(directory="templates")
+
+# static 설정 (css/js 사용 시 필요)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
 # 홈
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request}
+    )
+
 # https://thumbnail.coupangcdn.com/thumbnails/remote/492x492ex/image/vendor_inventory/9d0d/fd3f0d77757f64b2eba0905dcdd85051932ec1ab5e6afc0c3246f403fabc.jpg
-@app.post("/")
-async def home(image_url: str):
+@app.post("/winepair")
+async def winepair(image_url: str):
     # 사용자 image url을 받음
     print(image_url)
     # 이미지의 요리명, 요리의 풍미 설명(llm) -> wine top-5 검색 -> 요리에 어울리는 와인 추천
@@ -22,7 +41,3 @@ async def home(image_url: str):
     # res = "llm을 통해 추천 받은 것을 사용자에게 반환"
     return {"message": result}
 
-@app.post("/read")
-async def read():
-    # 비즈니스 로직처리
-    return {"message": "Hello World"}
