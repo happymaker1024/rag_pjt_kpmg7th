@@ -22,7 +22,7 @@ PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE")
 
 # LLM을 통한 요리 정보 설명
 # 1. 함수 정의 : 이미지 -> 요리명, 풍미 설명 출력
-def describe_dish_flavor(image_base64: str):
+def describe_dish_flavor(image_bytes: bytes):
     """
     input_data = {
         "image_bytes": b"...",   # 이미지 바이너리 데이터
@@ -30,7 +30,8 @@ def describe_dish_flavor(image_base64: str):
     }
     """
     
-    # 1️⃣ Gemini가 인식 가능한 data URL 생성
+    # 1️⃣ LLM이 인식 가능한 data URL 생성
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     image_data_url = f"data:image/jpeg;base64,{image_base64}"
 
     # 2️⃣ 프롬프트 구성
@@ -155,11 +156,6 @@ def wine_pair_main(image_bytes: bytes):
     # chain으로 연결하기
     chain = r1 | r2 | r3
 
-    # RunnableLambda를 통한 함수 실행
-    # input_data = {
-    #     "image_url": image_bytes
-    # }
-
     res = chain.invoke(image_bytes)
     # print(res)
     return res
@@ -173,8 +169,6 @@ if __name__ == "__main__":
     with open(image_path, "rb") as f:
         image_bytes = f.read()
 
-    # 이미지 bytes → base64     
-    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     # image_bytes = "https://thumbnail.coupangcdn.com/thumbnails/remote/492x492ex/image/vendor_inventory/9d0d/fd3f0d77757f64b2eba0905dcdd85051932ec1ab5e6afc0c3246f403fabc.jpg"
-    result = wine_pair_main(image_base64)
+    result = wine_pair_main(image_bytes)
     print(result)

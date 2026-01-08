@@ -29,15 +29,13 @@ async def home(request: Request):
 @app.post("/winepair")
 async def wine_pairing_api(file: UploadFile = File(...)):
     try:
+        print("file.filename", file.filename)
+        
         # 1. 이미지 파일 읽기
         image_bytes = await file.read()
 
-        # 2. 이미지 bytes → base64  
-        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-
-        # 3. 핵심 로직 호출 (경로 ❌, base64 ✅)
-        print("file.filename", file.filename)
-        result = wine_pair_main(image_base64)
+        # 2. 핵심 로직 호출 (클라이언트에서 전달된 이미지 바이트 사용)
+        result = wine_pair_main(image_bytes)
 
         return {
             "result": result
